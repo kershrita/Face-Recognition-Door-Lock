@@ -53,7 +53,7 @@ git clone https://github.com/kershrita/Face-Recognition-Door-Lock.git
 - Easy hands-free operation.
 - Easy setup and configuration.
 
-## Configurations
+## Configuration
 
 The biometric attendance system offers several uses and applications across various domains:
 
