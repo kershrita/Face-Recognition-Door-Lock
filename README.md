@@ -1,83 +1,137 @@
-# Face Recognition Door Lock
+# Face Recognition Door Lock (ESP32-CAM)
 
-Welcome to our innovative project that combines ESP32-CAM face recognition technology with an automatic door opening function. This project provides a safe and effective access control solution for homes, offices, and other environments where access should be restricted to authorized personnel only. With the ESP32-CAM module, the project can recognize authorized persons and automatically open the door for them using advanced machine learning algorithms.
+Edge AI access control system that performs on-device face recognition and actuates a physical door lock in real time.
 
-## Table of Contents
+## Overview
 
-- [Installation](#installation)
-- [Usage](#usage)
-- [Features](#features)
-- [Configuration](#configuration)
-- [Acknowledgments](#acknowledgments)
-- [Contributing](#contributing)
-- [License](#license)
-- [Contact](#contact)
+This project is an embedded AI/ML system for secure physical access control using ESP32-CAM.
+It is engineered as an end-to-end product pipeline, not only a face model demo.
 
-## Installation
+It focuses on:
+- On-device inference for privacy-preserving identity verification
+- Real-time control flow from camera stream to relay actuation
+- Persistent identity enrollment and management in flash memory
 
-1. Clone or Download the repository to your local machine using the following command:
-```
-git clone https://github.com/kershrita/Face-Recognition-Door-Lock.git
-```
-2. Assemble according to this circuit diagram:
-![Circuit Diagram](Circuit.jpg)
+Primary use cases:
+- Smart home and apartment entrance control
+- Small office or lab room access management
+- Low-cost edge access nodes where cloud inference is not acceptable
 
-3. Components:
-	- 1 * ESP32-CAM Development Board
-	- 1 * USB to TTL Converter - FT232RL FTDI Serial Module
-	- 1 * Cabinet Door Lock Electric
-	- 1 * LM2596S DC-DC Converter
-	- 1 * Relay Module 5V
-	- 2 * LED Module
-	- 2 * Switch
-	- 1 * Power Jack
+## Architecture
 
-4. Make sure that you have installed ESP32 boards and necessary libraries in your IDE.
-5. Step by step guidence with images you will find it **[here](Getting%20Started.pdf)**.
+The system is organized around an ESP32-CAM edge node, with a browser client as the operator interface.
 
-## Usage
+Runtime architecture flow:
+- Browser Client <-> ESP32-CAM Node: sends commands and receives status/events over WebSocket
+- Camera Capture -> Face Detection -> Face Recognition: real-time on-device vision pipeline
+- Face Recognition <-> Flash Identity Store: enrolled identities are read/written in persistent flash
+- Decision Logic -> Door Lock Actuator: recognition outcomes are translated into access decisions
+- Door Lock Actuator -> Relay -> Unlock Timer + Auto-Lock Behavior: physical unlock is time-bounded and reset automatically
 
-1. Make sure there is a Wi-Fi network with the name "T" and the password "12345678". Connect the USB to the laptop and open the Serial Monitor in the Arduino IDE to display the IP address for camera control, face registration, face deletion, and settings.
-2. Disconnect the USB and connect the power adapter.
-3. Enter the IP address in a browser to access the camera interface.
-4. To add a face, enter the name of the person, stand in front of the camera, and press "ADD USER". Wait for the face to be stored and appear below.
-5. To activate the normal camera shooting mode, select "STREAM CAMERA".
-6. To activate the face detection mode, choose "DETECT FACES". This mode recognizes whether there is a face in the image.
-7. To activate the mode for opening and closing the door for registered persons, choose "ACCESS CONTROL".
+Design intent:
+- Keep biometric processing and access decisions on-device for low latency and privacy
+- Separate identity persistence from decision execution for predictable state recovery after reboot
+- Isolate actuation timing logic to reduce lock-state errors in real deployments
+
+## Architecture Diagram
+
+![Face Recognition Door Lock Architecture](assets/Face%20Recognition%20Door%20Lock%20Architecture.png)
+
+This diagram is placed directly under the architecture section so reviewers can understand system boundaries before implementation details.
+
+Diagram description:
+- Top-right block: Browser Client controls the system and receives runtime feedback.
+- Center block: ESP32-CAM Node orchestrates all edge processing and control.
+- Mid-layer blocks: Camera Capture, Face Detection, Face Recognition, Flash Identity Store, and Decision Logic represent the core runtime modules.
+- Control branch: Decision Logic drives Door Lock Actuator for authorize/deny outcomes.
+- Device branch: Door Lock Actuator fans out to Relay control and WebSocket event signaling.
+- Safety branch: Relay state transitions are constrained by Unlock Timer and Auto-Lock Behavior.
 
 ## Features
 
-- Facial recognition technology to identify authorized individuals.
-- Automatic door opening for recognized faces.
-- Enhanced security and access control.
-- Easy hands-free operation.
-- Easy setup and configuration.
+- On-device face recognition with no cloud dependency
+- Multi-mode operation: camera stream, face detect, user enroll, and access control
+- Enrollment workflow with repeated confirmation samples for stability
+- Persistent face database in flash (supports identity delete and full reset)
+- Real-time browser feedback for detection and recognition states
+- Relay-based door unlock with automatic timeout re-lock
 
-## Configuration
+## Technical Highlights
 
-The biometric attendance system offers several uses and applications across various domains:
+- Edge-first design: inference and access decisions execute directly on ESP32-CAM to reduce latency and protect biometric data
+- Deterministic control logic: explicit finite-state transitions for reliable mode changes
+- Resource-aware camera configuration: adapts frame settings when PSRAM is available
+- Durable identity lifecycle: enrollment, lookup, single-delete, and delete-all operations integrated with flash persistence
+- Safety-oriented door control: relay is auto-reset after a fixed unlock interval (`5000 ms`)
+- Practical enrollment constraints: configurable identity capacity and confirmation count (`FACE_ID_SAVE_NUMBER`, `ENROLL_CONFIRM_TIMES`)
 
-- **Residential Security**: Improve home security by allowing access only to authorized individuals, replacing traditional locks with a face recognition system.
-- **Office and Workplace**: Control access to offices, sensitive areas, or restricted zones, ensuring that only authorized personnel can enter.
-- **Institutions and Government Organizations**: Enhance security in educational institutions, research facilities, and government organizations by controlling access to restricted areas and data centers.
-- **Smart Homes Integration**: Integrate the project with a smart home system to remotely monitor and control access to the property, providing convenience and peace of mind.
+## Tech Stack
 
-## Acknowledgments
+| Layer | Technologies |
+| --- | --- |
+| Device Firmware | Arduino (C/C++) on ESP32-CAM |
+| Vision/ML | ESP face detection and recognition modules (`fd_forward`, `fr_forward`, `fr_flash`) |
+| Communication | HTTP server + WebSocket server |
+| Frontend | Embedded HTML/CSS/JavaScript web interface |
+| Hardware | ESP32-CAM (AI Thinker), OV2640 camera, relay module, electric door lock |
+| Persistence | ESP32 flash storage for face identity records |
 
-We would like to acknowledge the following resources and libraries that have been instrumental in developing Kids Learning Program:
+## Getting Started
 
-- **[Arduino IDE](https://www.arduino.cc/en/software)**:  An open-source integrated development environment (IDE) used for programming Arduino boards.
-- **ESP32-CAM**: A versatile development board that combines the ESP32 microcontroller with a camera module, allowing you to capture and process images or stream video in your projects. It provides a compact and cost-effective solution for building projects involving visual data.
+### Hardware
 
-## Contribution
-Contributions are welcome to face recognition door lock and can help improve the project in various ways.
+- ESP32-CAM development board (AI Thinker)
+- USB-to-TTL adapter (for flashing)
+- Relay module (5V) and electric door lock
+- Power supply and supporting components as defined in `Circuit.fzz`
+
+Reference assets:
+- Circuit image: [assets/Circuit.jpg](assets/Circuit.jpg)
+- Wiring source file: [assets/Circuit.fzz](assets/Circuit.fzz)
+- Setup walkthrough: [assets/Getting Started.pdf](assets/Getting%20Started.pdf)
+
+![Hardware Wiring Diagram](assets/Circuit.jpg)
+
+### Software Prerequisites
+
+- Arduino IDE
+- ESP32 board package installed in Arduino IDE
+- Required libraries used by the sketch (WebSocket and ESP32 camera/face stack)
+
+### Build and Flash
+
+```bash
+git clone https://github.com/kershrita/Face-Recognition-Door-Lock.git
+cd Face-Recognition-Door-Lock
+```
+
+1. Open `FaceDoorEntryESP32Cam/FaceDoorEntryESP32Cam.ino` in Arduino IDE.
+2. Update Wi-Fi credentials in the sketch (`ssid`, `password`) for your network.
+3. Select ESP32-CAM board profile and correct upload port.
+4. Flash firmware and open Serial Monitor at `115200` baud.
+5. Copy the printed device IP and open it in a browser.
+
+### Runtime Workflow
+
+1. Start camera stream from the UI.
+2. Enroll authorized users with `ADD USER`.
+3. Switch to `ACCESS CONTROL` mode.
+4. Present a registered face to trigger unlock.
+
+## Results
+
+Current implementation delivers system-level outcomes:
+
+- End-to-end on-device recognition and access decision pipeline
+- Identity enrollment requiring multiple confirmation captures (`ENROLL_CONFIRM_TIMES = 5`)
+- Configured identity capacity per device (`FACE_ID_SAVE_NUMBER = 7`)
+- Automatic door re-lock after configured unlock window (`interval = 5000 ms`)
+- Face identities remain available after reboot via flash persistence
+
+Benchmark note:
+- This repository currently demonstrates operational performance and deployment behavior.
+- Standardized dataset metrics (accuracy, FAR/FRR, latency distributions) are not yet packaged in this repo.
 
 ## License
 
-Face Recognition Door Lock is released under the [MIT License](LICENSE).
-
-## Contact
-
-- Mail: ashrafabdulkhaliq80@gmail.com
-- LinkedIn: https://www.linkedin.com/in/ashraf-abdulkhaliq
-- GitHub: https://github.com/kershrita
+Released under the [MIT License](LICENSE).
